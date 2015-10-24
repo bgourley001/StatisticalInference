@@ -1,0 +1,132 @@
+---
+title: 'Statistical Inference Part 2 : ToothGrowth Data Analysis'
+author: "Bill Gourley"
+date: "October 25, 2015"
+output: pdf_document
+---
+
+## Overview
+In this exercise, we will use the "ToothGrowth" data from the package "UsingR", perform a basic exploratory analysis of the data, and run a series of tests to determine whether supplements and dosage levels have an effect on tooth growth. The supplements are "Orange Juice" (OJ) and "Vitamin C" (VC), and there are 3 dosage levels, 0.5, 1.0 and 2.0 mg. The data contains 60 observations of the tooth growth length from a study performed on Guinea Pigs. The 60 subjects were split into 2 groups of 30 subjects each, one group receiving 'OJ' as a supplement, the other receiving 'VC'. Each group is independent so unpaired tests will be performed.
+
+## Analysis Requirements
+1. Load the ToothGrowth data and perform some basic exploratory data analyses 
+2. Provide a basic summary of the data.
+3. Use confidence intervals and/or hypothesis tests to compare tooth growth by supp and dose. (Only use the techniques from class, even if there's other approaches worth considering)
+4. State your conclusions and the assumptions needed for your conclusions. 
+
+## R Setup and Initialization
+```{r,SetupAndInitialization,message=FALSE}
+#packages
+library(dplyr)
+library(ggplot2)
+
+#Load data
+data("ToothGrowth")
+```
+
+## Exploratory Data Analysis
+The structure of the raw dataset is shown below. The dose variable is set to be numeric but only has 3 unique values, therfore we will convert dose to be a factor with 3 levels (0.5, 1.0 and 2.0). The summary of the dataset after this change is also shown.
+```{r,ExploratoryDataAnalysis}
+#data structure
+str(ToothGrowth)
+
+#get dose values
+unique(ToothGrowth$dose)
+
+#convert dose from num to factor
+ToothGrowth$dose <- as.factor(ToothGrowth$dose)
+
+#data summary
+summary(ToothGrowth)
+```
+
+The following figure shows a multiple boxplot which compares the Tooth Growth Length split by supplement and dosage.
+```{r,boxplot,echo=FALSE}
+#boxplot
+g <- ggplot(aes(x = supp, y = len), data = ToothGrowth) +
+  geom_boxplot(aes(fill = supp)) + facet_wrap(~ dose) +
+  ggtitle("Comparison of Tooth Growth by Supplement and Dosage") +
+  labs(x = "Supplement", y = "Tooth Growth Length")
+
+print(g)
+```
+
+The following table summarizes the data.
+```{r}
+#summary table of length
+group_len <- group_by(ToothGrowth,dose,supp)
+group_len.summary <- summarize(group_len,
+          count = n(),
+          mean = mean(len),
+          median = median(len),
+          std.dev = sd(len),
+          variance = var(len))
+
+group_len.summary
+```
+
+From the table we can see that, for each of the dosage levels, 10 subjects received 'OJ' and 10 received 'VC' as a supplement. The means and medians for each dosage level are roughly equal, so we can surmise that the distributions are approximately normal. The variances, however, are markedly different so we will treat the variances as unequal when performing the tests. The sample sizes are small, so we will use t-tests rather than z-tests.
+
+## Comparison of Tooth Growth by Supplement and Dosage
+For comparison purposes, we will carry out 3 sample t-tests, one for each dosage level. The data will be subset as follows:
+```{r}
+#subset ToothGrowth by OJ and VC
+OJ <- subset(ToothGrowth,supp == "OJ")
+VC <- subset(ToothGrowth,supp == "VC")
+
+#OJ subsets for dose levels 0.5, 1.0, 2.0
+OJ_0.5 <- subset(OJ,dose == 0.5)
+OJ_1.0 <- subset(OJ,dose == 1.0)
+OJ_2.0 <- subset(OJ,dose == 2.0)
+
+#VC subsets for dose levels 0.5, 1.0, 2.0
+VC_0.5 <- subset(VC,dose == 0.5)
+VC_1.0 <- subset(VC,dose == 1.0)
+VC_2.0 <- subset(VC,dose == 2.0)
+
+```
+
+For each t-test, the null hypothesis H0 is 'the true difference in means is equal to 0'. The alternative hypothesis Ha is 'the true difference in means is not equal to 0'.
+
+The three t-tests are :
+
+1. OJ 0.5 dosage against VC 0.5 dosage
+2. OJ 1.0 dosage against VC 1.0 dosage
+3. OJ 2.0 dosage against VC 2.0 dosage
+
+### 1. t-test supplement OJ 0.5mg dosage against supplement VC 0.5mg dosage
+```{r,t-test1}
+t.test(OJ_0.5$len,VC_0.5$len,paired = FALSE,var.equal = FALSE)
+```
+
+The p-value for this test of 0.0064 indicates that we should reject the null hypothesis.
+
+### 2. t-test supplement OJ 1.0mg dosage against supplement VC 1.0mg dosage
+```{r,t-test2}
+t.test(OJ_1.0$len,VC_1.0$len,paired = FALSE,var.equal = FALSE)
+```
+
+The p-value for this test of 0.001 indicates that we should reject the null hypothesis.
+
+### 3. t-test supplement OJ 2.0mg dosage against supplement VC 2.0mg dosage
+```{r,t-test3}
+t.test(OJ_2.0$len,VC_2.0$len,paired = FALSE,var.equal = FALSE)
+```
+
+The p-value for this test of 0.963 indicates that we should fail to reject the null hypothesis.
+
+## Assumptions
+
+For the tests carried out above, we are assuming the following :
+
+1. The groups are independent
+2. The underlying distribution of each group is normal.
+3. The sample set of guinea pigs selected is representative of the population.
+
+## Conclusions
+
+Examining the results of the 3 t-tests carried out and the boxplot comparison carried out earlier, we can conclude the following :
+
+1. Overall, administrating the supplement results in an increase in tooth growth.
+2. At dosage levels of 0.5mg and 1mg, using Orange Juice as a supplement delivery system is more effective than by administrating Vitamin C alone.
+3. However, there does not seem to be any marked difference in tooth growth between the two delivery systems when the dosage level is increased to 2mg.
